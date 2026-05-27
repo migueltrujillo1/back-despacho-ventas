@@ -1,66 +1,30 @@
 services:
-  mysql:
-    image: mysql:8.0
-    container_name: mysql-devops
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: devops_db
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-    networks:
-      - backend-net
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
   back-despacho:
     build:
       context: ./Springboot-API-REST-DESPACHO
     container_name: back-despacho
     restart: always
-    depends_on:
-      mysql:
-        condition: service_healthy
     ports:
       - "8081:8081"
     environment:
       SERVER_PORT: 8081
-      DB_ENDPOINT: mysql
-      DB_PORT: 3306
-      DB_NAME: devops_db
-      DB_USERNAME: root
-      DB_PASSWORD: root
-    networks:
-      - backend-net
+      DB_ENDPOINT: ${DB_ENDPOINT}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
 
   back-ventas:
     build:
       context: ./Springboot-API-REST
     container_name: back-ventas
     restart: always
-    depends_on:
-      mysql:
-        condition: service_healthy
     ports:
       - "8082:8082"
     environment:
       SERVER_PORT: 8082
-      DB_ENDPOINT: mysql
-      DB_PORT: 3306
-      DB_NAME: devops_db
-      DB_USERNAME: root
-      DB_PASSWORD: root
-    networks:
-      - backend-net
-
-volumes:
-  mysql_data:
-
-networks:
-  backend-net:
-    driver: bridge
+      DB_ENDPOINT: ${DB_ENDPOINT}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
