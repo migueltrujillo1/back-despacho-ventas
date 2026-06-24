@@ -1,0 +1,15 @@
+resources:
+  - namespace.yaml
+  - mysql-secret.yaml
+  - mysql-configmap.yaml
+  - mysql-deployment.yaml
+  - mysql-service.yaml
+  - despachos-deployment.yaml
+  - despachos-service.yaml
+  - ventas-deployment.yaml
+  - ventas-service.yaml
+  - frontend-deployment.yaml
+  - frontend-service.yaml
+  - despachos-hpa.yaml
+  - ventas-hpa.yaml
+  - frontend-hpa.yaml
