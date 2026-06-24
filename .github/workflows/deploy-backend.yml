@@ -1,0 +1,98 @@
+name: Despliegue Backend a EKS
+
+on:
+  push:
+    branches:
+      - ep3-eks
+    paths:
+      - "Springboot-API-REST/**"
+      - "Springboot-API-REST-DESPACHO/**"
+      - "k8s/**"
+      - ".github/workflows/deploy-backend.yml"
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+  EKS_CLUSTER_NAME: ${{ secrets.EKS_CLUSTER_NAME }}
+  ECR_DESPACHOS_REPOSITORY: ep3-despachos-backend
+  ECR_VENTAS_REPOSITORY: ep3-ventas-backend
+  IMAGE_TAG: ${{ github.sha }}
+  NAMESPACE: ep3
+
+jobs:
+  construir-subir-desplegar:
+    name: Construir, subir y desplegar backends
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar código del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar credenciales de AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Iniciar sesión en Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Construir y subir imagen de Despachos
+        run: |
+          docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_DESPACHOS_REPOSITORY:$IMAGE_TAG ./Springboot-API-REST-DESPACHO
+          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_DESPACHOS_REPOSITORY:$IMAGE_TAG
+
+      - name: Construir y subir imagen de Ventas
+        run: |
+          docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_VENTAS_REPOSITORY:$IMAGE_TAG ./Springboot-API-REST
+          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_VENTAS_REPOSITORY:$IMAGE_TAG
+
+      - name: Instalar kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Configurar acceso al clúster EKS
+        run: |
+          aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
+
+      - name: Aplicar manifiestos base de Kubernetes
+        run: |
+          kubectl apply -f k8s/namespace.yaml
+          kubectl apply -f k8s/mysql-secret.yaml
+          kubectl apply -f k8s/mysql-configmap.yaml
+          kubectl apply -f k8s/mysql-deployment.yaml
+          kubectl apply -f k8s/mysql-service.yaml
+          kubectl apply -f k8s/despachos-service.yaml
+          kubectl apply -f k8s/ventas-service.yaml
+
+      - name: Aplicar deployments backend
+        run: |
+          kubectl apply -f k8s/despachos-deployment.yaml
+          kubectl apply -f k8s/ventas-deployment.yaml
+
+      - name: Actualizar imagen del backend Despachos en EKS
+        run: |
+          kubectl set image deployment/despachos-backend \
+            despachos-backend=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_DESPACHOS_REPOSITORY:$IMAGE_TAG \
+            -n $NAMESPACE
+
+      - name: Actualizar imagen del backend Ventas en EKS
+        run: |
+          kubectl set image deployment/ventas-backend \
+            ventas-backend=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_VENTAS_REPOSITORY:$IMAGE_TAG \
+            -n $NAMESPACE
+
+      - name: Esperar despliegue correcto de Despachos
+        run: |
+          kubectl rollout status deployment/despachos-backend -n $NAMESPACE --timeout=180s
+
+      - name: Esperar despliegue correcto de Ventas
+        run: |
+          kubectl rollout status deployment/ventas-backend -n $NAMESPACE --timeout=180s
+
+      - name: Mostrar estado final del namespace
+        run: |
+          kubectl get pods -n $NAMESPACE
+          kubectl get svc -n $NAMESPACE
