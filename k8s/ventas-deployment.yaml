@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: ventas-backend
-          image: 171210198405.dkr.ecr.us-east-1.amazonaws.com/ep3-ventas-backend:eks-v1
+          image: 649268627802.dkr.ecr.us-east-1.amazonaws.com/ep3-ventas-backend:eks-v1
           imagePullPolicy: Always
           ports:
             - containerPort: 8082
