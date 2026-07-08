@@ -3,6 +3,7 @@ name: Despliegue Backend a EKS
 on:
   push:
     branches:
+      - main
       - ep3-eks
     paths:
       - "Springboot-API-REST/**"
@@ -86,11 +87,11 @@ jobs:
 
       - name: Esperar despliegue correcto de Despachos
         run: |
-          kubectl rollout status deployment/despachos-backend -n $NAMESPACE --timeout=180s
+          kubectl rollout status deployment/despachos-backend -n $NAMESPACE --timeout=600s
 
       - name: Esperar despliegue correcto de Ventas
         run: |
-          kubectl rollout status deployment/ventas-backend -n $NAMESPACE --timeout=180s
+          kubectl rollout status deployment/ventas-backend -n $NAMESPACE --timeout=600s
 
       - name: Mostrar estado final del namespace
         run: |
